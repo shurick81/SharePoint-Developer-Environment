@@ -1,5 +1,6 @@
 $DCMachineNameParameter = "lab4dc2"
-$SP2016DevMachineNameParameter = "lab4sp2"
+$SP2016DevMachineNameParameter = "lab4sp3"
+$searchIndexDirectory = "c:\SPSearchIndex"
 Configuration SharePointDevelopmentEnvironment
 {
     param(
@@ -322,6 +323,14 @@ Configuration SharePointDevelopmentEnvironment
             DependsOn   = "[xWaitForADDomain]WaitForDomain"
         }
 
+        xADUser SPServicesAccountUser
+        {
+            DomainName  = $DomainName
+            UserName    = $SPServicesAccountCredential.GetNetworkCredential().UserName
+            Password    = $SPServicesAccountCredential
+            DependsOn   = "[xWaitForADDomain]WaitForDomain"
+        }
+
         xADUser SPSearchServiceAccountUser
         {
             DomainName  = $DomainName
@@ -509,13 +518,6 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPFarm]Farm"
         }
-        SPServiceAppPool WebAppPool
-        {
-            Name            = "All Web Applications"
-            ServiceAccount  = $SPWebAppPoolAccountCredential.UserName
-            InstallAccount  = $SPInstallAccountCredential
-            DependsOn       = "[SPManagedAccount]ApplicationWebPoolAccount"
-        }
         SPWebApplication RootWebApp
         {
             Name                    = "RootWebApp"
@@ -565,6 +567,153 @@ Configuration SharePointDevelopmentEnvironment
             HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
             InstallAccount              = $SPInstallAccountCredential
             DependsOn                   = "[SPSite]RootPathSite"
+        }
+        SPSite SearchCenterSite
+        {
+            Url                         = "http://$NodeName.northeurope.cloudapp.azure.com/sites/searchcenter"
+            OwnerAlias                  = $SPInstallAccountCredential.UserName
+            Template                    = "SRCHCEN#0"
+            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = "[SPSite]RootPathSite"
+        }
+
+        SPManagedAccount SharePointServicesPoolAccount
+        {
+            AccountName     = $SPServicesAccountCredential.UserName
+            Account         = $SPServicesAccountCredential
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPFarm]Farm"
+        }
+
+        SPServiceAppPool SharePointServicesAppPool
+        {
+            Name            = "SharePoint Services App Pool"
+            ServiceAccount  = $SPServicesAccountCredential.UserName
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPManagedAccount]SearchServicePoolAccount"
+        }
+
+        SPManagedMetaDataServiceApp ManagedMetadataServiceApp
+        {
+            DatabaseName    = "SP_Metadata";
+            ApplicationPool = "SharePoint Services App Pool";
+            ProxyName       = "Managed Metadata Service Application";
+            Name            = "Managed Metadata Service Application";
+            Ensure          = "Present";
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+         
+        SPUserProfileServiceApp UserProfileServiceApp
+        {
+            Name                = "User Profile Service Application"
+            ApplicationPool     = "SharePoint Services App Pool"
+            MySiteHostLocation  = "http://$NodeName.northeurope.cloudapp.azure.com/sites/my"
+            ProfileDBName       = "SP_UserProfiles"
+            SocialDBName        = "SP_Social"
+            SyncDBName          = "SP_ProfileSync"
+            EnableNetBIOS       = $false
+            FarmAccount         = $SPFarmAccountCredential
+            InstallAccount      = $SPInstallAccountCredential
+            DependsOn           = "[SPFarm]Farm"
+        }
+
+        SPUserProfileSyncService UserProfileSyncService
+        {  
+            UserProfileServiceAppName   = "User Profile Service Application"
+            Ensure                      = "Present"
+            FarmAccount                 = $SPFarmAccountCredential
+            RunOnlyWhenWriteable        = $true
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = "[SPUserProfileServiceApp]UserProfileServiceApp"
+        }
+
+        SPSubscriptionSettingsServiceApp SubscriptionSettingsServiceApp
+        {
+            Name            = "Subscription Settings Service Application"
+            ApplicationPool = "SharePoint Services App Pool"
+            DatabaseName    = "SP_SubscriptionSettings"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPFarm]Farm"
+        }
+
+        SPAppManagementServiceApp AppManagementServiceApp
+        {
+            Name            = "App Management Service Application"
+            ApplicationPool = "SharePoint Services App Pool"
+            DatabaseName    = "SP_AppManagement"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPSubscriptionSettingsServiceApp]SubscriptionSettingsServiceApp"
+        }
+
+        SPManagedAccount SearchServicePoolAccount
+        {
+            AccountName     = $SPSearchServiceAccountCredential.UserName
+            Account         = $SPSearchServiceAccountCredential
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPFarm]Farm"
+        }
+
+        SPServiceAppPool SearchServiceAppPool
+        {
+            Name            = "SharePoint Search App Pool"
+            ServiceAccount  = $SPSearchServiceAccountCredential.UserName
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPManagedAccount]SearchServicePoolAccount"
+        }
+
+        SPSearchServiceApp EnterpriseSearchServiceApplication
+        {
+            Name                        = "Search Service Application";
+            Ensure                      = "Present";
+            ProxyName                   = "Search Service Application";
+            ApplicationPool             = "SharePoint Search App Pool";
+            SearchCenterUrl             = "http://$NodeName.northeurope.cloudapp.azure.com/sites/searchcenter/pages";
+            DatabaseName                = "SP_Search";
+            DefaultContentAccessAccount = $SPCrawlerAccountCredential;
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = "[SPServiceAppPool]SearchServiceAppPool"
+        }
+
+        File "IndexFolder"
+        {
+            DestinationPath = $searchIndexDirectory
+            Type            = "Directory"
+        }
+
+        SPSearchTopology SearchTopology
+        {
+            ServiceAppName          = "Search Service Application";
+            ContentProcessing       = @($NodeName);
+            AnalyticsProcessing     = @($NodeName);
+            IndexPartition          = @($NodeName);
+            Crawler                 = @($NodeName);
+            Admin                   = @($NodeName);
+            QueryProcessing         = @($NodeName);
+            FirstPartitionDirectory = $searchIndexDirectory;
+            InstallAccount          = $SPInstallAccountCredential
+            DependsOn = @("[SPSearchServiceApp]EnterpriseSearchServiceApplication","[File]IndexFolder");
+        }
+
+        SPSearchContentSource WebsiteSource
+        {
+            ServiceAppName       = "Search Service Application"
+            Name                 = "Local SharePoint sites"
+            ContentSourceType    = "SharePoint"
+            Addresses            = @("http://SP2016_01.bizspark-sap2.local")
+            CrawlSetting         = "CrawlEverything"
+            ContinuousCrawl      = $true
+            FullSchedule         = MSFT_SPSearchCrawlSchedule{
+                                    ScheduleType = "Weekly"
+                                    CrawlScheduleDaysOfWeek = @("Monday", "Wednesday", "Friday")
+                                    StartHour = "3"
+                                    StartMinute = "0"
+                                   }
+            Priority             = "Normal"
+            Ensure               = "Present"
+            InstallAccount       = $SPInstallAccountCredential
+            DependsOn            = "[SPSearchTopology]SearchTopology"
         }
     }
 }
