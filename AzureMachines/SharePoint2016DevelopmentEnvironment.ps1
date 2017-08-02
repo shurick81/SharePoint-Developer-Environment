@@ -568,15 +568,6 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount              = $SPInstallAccountCredential
             DependsOn                   = "[SPSite]RootPathSite"
         }
-        SPSite SearchCenterSite
-        {
-            Url                         = "http://$NodeName.northeurope.cloudapp.azure.com/sites/searchcenter"
-            OwnerAlias                  = $SPInstallAccountCredential.UserName
-            Template                    = "SRCHCEN#0"
-            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
-            InstallAccount              = $SPInstallAccountCredential
-            DependsOn                   = "[SPSite]RootPathSite"
-        }
 
         SPManagedAccount SharePointServicesPoolAccount
         {
@@ -604,7 +595,17 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
         }
-         
+        
+        SPSite MySite
+        {
+            Url                         = "http://$NodeName.northeurope.cloudapp.azure.com/sites/my"
+            OwnerAlias                  = $SPInstallAccountCredential.UserName
+            Template                    = "SPSMSITEHOST#0"
+            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = "[SPSite]RootPathSite"
+        }
+
         SPUserProfileServiceApp UserProfileServiceApp
         {
             Name                = "User Profile Service Application"
@@ -616,17 +617,7 @@ Configuration SharePointDevelopmentEnvironment
             EnableNetBIOS       = $false
             FarmAccount         = $SPFarmAccountCredential
             InstallAccount      = $SPInstallAccountCredential
-            DependsOn           = "[SPFarm]Farm"
-        }
-
-        SPUserProfileSyncService UserProfileSyncService
-        {  
-            UserProfileServiceAppName   = "User Profile Service Application"
-            Ensure                      = "Present"
-            FarmAccount                 = $SPFarmAccountCredential
-            RunOnlyWhenWriteable        = $true
-            InstallAccount              = $SPInstallAccountCredential
-            DependsOn                   = "[SPUserProfileServiceApp]UserProfileServiceApp"
+            DependsOn           = @("[SPServiceAppPool]SharePointServicesAppPool","[SPSite]MySite")
         }
 
         SPSubscriptionSettingsServiceApp SubscriptionSettingsServiceApp
@@ -663,6 +654,16 @@ Configuration SharePointDevelopmentEnvironment
             DependsOn       = "[SPManagedAccount]SearchServicePoolAccount"
         }
 
+        SPSite SearchCenterSite
+        {
+            Url                         = "http://$NodeName.northeurope.cloudapp.azure.com/sites/searchcenter"
+            OwnerAlias                  = $SPInstallAccountCredential.UserName
+            Template                    = "SRCHCEN#0"
+            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = "[SPSite]RootPathSite"
+        }
+
         SPSearchServiceApp EnterpriseSearchServiceApplication
         {
             Name                        = "Search Service Application";
@@ -673,7 +674,7 @@ Configuration SharePointDevelopmentEnvironment
             DatabaseName                = "SP_Search";
             DefaultContentAccessAccount = $SPCrawlerAccountCredential;
             InstallAccount              = $SPInstallAccountCredential
-            DependsOn                   = "[SPServiceAppPool]SearchServiceAppPool"
+            DependsOn                   = @("[SPServiceAppPool]SearchServiceAppPool","[SPSite]SearchCenterSite")
         }
 
         File "IndexFolder"
