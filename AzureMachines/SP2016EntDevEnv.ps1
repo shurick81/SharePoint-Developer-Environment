@@ -1,156 +1,31 @@
-$DCMachineNameParameter = "lab4dc2"
-$SP2016DevMachineNameParameter = "lab4sp3"
-$searchIndexDirectory = "c:\SPSearchIndex"
-Configuration SharePointDevelopmentEnvironment
+Configuration SP2016EntDevEnv
 {
     param(
-        [String]
-        $DomainName = "lab4.local",
-
-        [String]
-        $DomainControllerIP = "10.1.0.6",
-
-        [String]
-        $SPProductKey = "TY6N4-K9WD3-JD2J2-VYKTJ-GVJ2J",
-
-        [String]
-        $DCMachineName = $DCMachineNameParameter,
-
-        [String]
-        $SP2016DevMachineName = $SP2016DevMachineNameParameter,
-
-        [String]
-        $DomainAdminUserName = "dauser1",
-
-        [String]
-        $DomainAdminPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $DomainAdminCredential,
-
-        [String]
-        $DomainSafeModeAdministratorPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $DomainSafeModeAdministratorPasswordCredential,
-
-        [String]
-        $SPInstallAccountUserName = "_spadm",
-
-        [String]
-        $SPInstallAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPInstallAccountCredential,
-
-        [String]
-        $SPFarmAccountUserName = "_spfrm",
-
-        [String]
-        $SPFarmAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPFarmAccountCredential,
-
-        [String]
-        $SPWebAppPoolAccountUserName = "_spwebapppool",
-
-        [String]
-        $SPWebAppPoolAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPWebAppPoolAccountCredential,
-
-        [String]
-        $SPServicesAccountUserName = "_spsrv",
-
-        [String]
-        $SPServicesAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPServicesAccountCredential,
-
-        [String]
-        $SPSearchServiceAccountUserName = "_spsrchsrv",
-
-        [String]
-        $SPSearchServiceAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPSearchServiceAccountCredential,
-
-        [String]
-        $SPCrawlerAccountUserName = "_spcrawler",
-
-        [String]
-        $SPCrawlerAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPCrawlerAccountCredential,
-
-        [String]
-        $SPTestAccountUserName = "_sptestuser1",
-
-        [String]
-        $SPTestAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPTestAccountCredential,
-
-        [String]
-        $SPSecondTestAccountUserName = "_sptestuser2",
-
-        [String]
-        $SPSecondTestAccountPassword = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPSecondTestAccountCredential,
-
-        [String]
-        $SPOCSuperUser = "_spocuser",
-
-        [String]
-        $SPOCSuperReader = "_spocrdr",
-
-        [String]
-        $SPAdminGroupName = "SP Admins",
-
-        [String]
-        $SPMemberGroupName = "SP Members",
-
-        [String]
-        $SPVisitorGroupName = "SP Visitors",
-
-        [String]
-        $SPPassphrase = "123$%^qweRTY",
-
-        [PSCredential]
-        $SPPassphraseCredential
-
+        $configParameters
     )
-    
+    $DomainName = $configParameters.DomainName;
+    $domainAdminUserName = $configParameters.DomainAdminUserName;
+    $SPInstallAccountUserName = $configParameters.SPInstallAccountUserName;
+    $SPFarmAccountUserName = $configParameters.SPFarmAccountUserName;
+    $SPWebAppPoolAccountUserName = $configParameters.SPWebAppPoolAccountUserName;
+    $SPServicesAccountUserName = $configParameters.SPServicesAccountUserName;
+    $SPSearchServiceAccountUserName = $configParameters.SPSearchServiceAccountUserName;
+    $SPCrawlerAccountUserName = $configParameters.SPCrawlerAccountUserName;
+    $SPPassPhrase = $configParameters.SPPassPhrase;
+    $searchIndexDirectory = $configParameters.searchIndexDirectory;
+
     $shortDomainName = $DomainName.Substring( 0, $DomainName.IndexOf( "." ) )
+    $siteCollectionHostName = "sp2016entdev.$DomainName"
 
     # examining, generatig and requesting credentials
         if ( !$DomainAdminCredential )
         {
             if ( $domainAdminUserName )
             {
-                $securedPassword = ConvertTo-SecureString $domainAdminPassword -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.DomainAdminPassword -AsPlainText -Force
                 $domainAdminCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$domainAdminUserName", $securedPassword )
             } else {
                 $domainAdminCredential = Get-Credential -Message "Credential with domain administrator privileges";
-            }
-        }
-
-        if ( !$DomainSafeModeAdministratorPasswordCredential )
-        {
-            if ( $DomainSafeModeAdministratorPassword )
-            {
-                $securedPassword = ConvertTo-SecureString $DomainSafeModeAdministratorPassword -AsPlainText -Force
-                $DomainSafeModeAdministratorPasswordCredential = New-Object System.Management.Automation.PSCredential( "anyidentity", $securedPassword )
-            } else {
-                $DomainSafeModeAdministratorPasswordCredential = Get-Credential -Message "Enter any but not empty login and safe mode password";
             }
         }
 
@@ -158,7 +33,7 @@ Configuration SharePointDevelopmentEnvironment
         {
             if ( $SPInstallAccountUserName )
             {
-                $securedPassword = ConvertTo-SecureString $SPInstallAccountPassword -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.SPInstallAccountPassword -AsPlainText -Force
                 $SPInstallAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPInstallAccountUserName", $securedPassword )
             } else {
                 $SPInstallAccountCredential = Get-Credential -Message "Credential for SharePoint install account";
@@ -169,7 +44,7 @@ Configuration SharePointDevelopmentEnvironment
         {
             if ( $SPPassPhrase )
             {
-                $securedPassword = ConvertTo-SecureString $SPPassPhrase -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.SPPassPhrase -AsPlainText -Force
                 $SPPassphraseCredential = New-Object System.Management.Automation.PSCredential( "anyidentity", $securedPassword )
             } else {
                 $SPPassphraseCredential = Get-Credential -Message "Enter any user name and enter pass phrase in password field";
@@ -180,7 +55,7 @@ Configuration SharePointDevelopmentEnvironment
         {
             if ( $SPFarmAccountUserName )
             {
-                $securedPassword = ConvertTo-SecureString $SPFarmAccountPassword -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.SPFarmAccountPassword -AsPlainText -Force
                 $SPFarmAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPFarmAccountUserName", $securedPassword )
             } else {
                 $SPFarmAccountCredential = Get-Credential -Message "Credential for SharePoint farm account";
@@ -191,7 +66,7 @@ Configuration SharePointDevelopmentEnvironment
         {
             if ( $SPWebAppPoolAccountUserName )
             {
-                $securedPassword = ConvertTo-SecureString $SPWebAppPoolAccountPassword -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.SPWebAppPoolAccountPassword -AsPlainText -Force
                 $SPWebAppPoolAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPWebAppPoolAccountUserName", $securedPassword )
             } else {
                 $SPWebAppPoolAccountCredential = Get-Credential -Message "Credential for SharePoint Web Application app pool account";
@@ -202,7 +77,7 @@ Configuration SharePointDevelopmentEnvironment
         {
             if ( $SPServicesAccountUserName )
             {
-                $securedPassword = ConvertTo-SecureString $SPServicesAccountPassword -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.SPServicesAccountPassword -AsPlainText -Force
                 $SPServicesAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPServicesAccountUserName", $securedPassword )
             } else {
                 $SPServicesAccountCredential = Get-Credential -Message "Credential for SharePoint shared services app pool";
@@ -213,7 +88,7 @@ Configuration SharePointDevelopmentEnvironment
         {
             if ( $SPSearchServiceAccountUserName )
             {
-                $securedPassword = ConvertTo-SecureString $SPSearchServiceAccountPassword -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.SPSearchServiceAccountPassword -AsPlainText -Force
                 $SPSearchServiceAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPSearchServiceAccountUserName", $securedPassword )
             } else {
                 $SPSearchServiceAccountCredential = Get-Credential -Message "Credential for SharePoint search service account";
@@ -224,194 +99,30 @@ Configuration SharePointDevelopmentEnvironment
         {
             if ( $SPCrawlerAccountUserName )
             {
-                $securedPassword = ConvertTo-SecureString $SPCrawlerAccountPassword -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $configParameters.SPCrawlerAccountPassword -AsPlainText -Force
                 $SPCrawlerAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPCrawlerAccountUserName", $securedPassword )
             } else {
                 $SPCrawlerAccountCredential = Get-Credential -Message "Credential for SharePoint crawler account";
             }
         }
 
-        if ( !$SPTestAccountCredential )
-        {
-            if ( $SPTestAccountUserName )
-            {
-                $securedPassword = ConvertTo-SecureString $SPTestAccountPassword -AsPlainText -Force
-                $SPTestAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPTestAccountUserName", $securedPassword )
-            } else {
-                $SPTestAccountCredential = Get-Credential -Message "Credential for SharePoint test user";
-            }
-        }
-
-        if ( !$SPSecondTestAccountCredential )
-        {
-            if ( $SPSecondTestAccountUserName )
-            {
-                $securedPassword = ConvertTo-SecureString $SPSecondTestAccountPassword -AsPlainText -Force
-                $SPSecondTestAccountCredential = New-Object System.Management.Automation.PSCredential( "$shortDomainName\$SPSecondTestAccountUserName", $securedPassword )
-            } else {
-                $SPSecondTestAccountCredential = Get-Credential -Message "Credential for SharePoint test user";
-            }
-        }
-
-        $SPOCAccountPass = ConvertTo-SecureString "Any3ligiblePa`$`$" -AsPlainText -Force
-        $SPOCAccountCredential = New-Object System.Management.Automation.PSCredential( "anyusername", $SPOCAccountPass )
-
     # credentials are ready
 
-    Import-DscResource -ModuleName xRemoteDesktopAdmin
     Import-DscResource -ModuleName PSDesiredStateConfiguration
-    Import-DscResource -ModuleName xActiveDirectory
     Import-DSCResource -Module xSystemSecurity -Name xIEEsc
     Import-DSCResource -ModuleName xDSCDomainJoin
     Import-DSCResource -ModuleName xNetworking
     Import-DSCResource -ModuleName xSQLServer -Name xSQLServerSetup
     Import-DSCResource -ModuleName SharePointDSC
+    Import-DscResource -ModuleName xWebAdministration
 
-    Node $DCMachineName
-    {
-        xRemoteDesktopAdmin DCRDPSettings
-        {
-           Ensure               = 'Present'
-           UserAuthentication   = 'NonSecure'
-        }
-
-        WindowsFeatureSet DomainFeatures
-        {
-            Name                    = @("DNS", "AD-Domain-Services", "RSAT-ADDS")
-            Ensure                  = 'Present'
-            IncludeAllSubFeature    = $true
-        } 
-                
-        xADDomain ADDomain
-        {
-            DomainName                      = $DomainName
-            DomainAdministratorCredential   = $DomainAdminCredential
-            SafemodeAdministratorPassword   = $DomainSafeModeAdministratorPasswordCredential
-            DependsOn                       = @("[WindowsFeatureSet]DomainFeatures", "[xRemoteDesktopAdmin]DCRDPSettings")
-        }
-
-        xWaitForADDomain WaitForDomain
-        {
-            DomainName              = $DomainName
-            DomainUserCredential    = $domainCred
-            RetryCount              = $Node.RetryCount
-            RetryIntervalSec        = $Node.RetryIntervalSec
-            DependsOn               = "[xADDomain]ADDomain"
-        }
-
-        xADUser SPInstallAccountUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPInstallAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPInstallAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPFarmAccountUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPFarmAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPFarmAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPWebAppPoolAccountUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPWebAppPoolAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPWebAppPoolAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPServicesAccountUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPServicesAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPServicesAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPSearchServiceAccountUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPSearchServiceAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPSearchServiceAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPCrawlerAccountUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPCrawlerAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPCrawlerAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPOCSuperUserADUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPOCSuperUser
-            Password    = $SPOCAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPOCSuperReaderUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPOCSuperReader
-            Password    = $SPOCAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPTestUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPTestAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPTestAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADUser SPSecondTestUser
-        {
-            DomainName  = $DomainName
-            UserName    = $SPSecondTestAccountCredential.GetNetworkCredential().UserName
-            Password    = $SPSecondTestAccountCredential
-            DependsOn   = "[xWaitForADDomain]WaitForDomain"
-        }
-
-        xADGroup SPAdminGroup
-        {
-            GroupName           = $SPAdminGroupName
-            Ensure              = "Present"
-            MembersToInclude    = $SPInstallAccountCredential.GetNetworkCredential().UserName
-            DependsOn           = "[xADUser]SPInstallAccountUser"
-        }
-
-        xADGroup SPMemberGroup
-        {
-            GroupName           = $SPMemberGroupName
-            Ensure              = "Present"
-            MembersToInclude    = $SPTestAccountCredential.GetNetworkCredential().UserName
-            DependsOn           = "[xADUser]SPInstallAccountUser"
-        }
-
-        xADGroup SPVisitorGroup
-        {
-            GroupName           = $SPVisitorGroupName
-            Ensure              = "Present"
-            MembersToInclude    = $SPSecondTestAccountCredential.GetNetworkCredential().UserName
-            DependsOn           = "[xADUser]SPInstallAccountUser"
-        }
-
-    }
-
-    Node $SP2016DevMachineName
+    Node $SP2016EntDevMachineName
     {
         xDNSServerAddress DNSClient
         {
-            Address         = $DomainControllerIP
+            Address         = $configParameters.DomainControllerIP
             AddressFamily   = "IPv4"
-            InterfaceAlias  = "Ethernet 2"
+            InterfaceAlias  = "Ethernet 3"
         }
         Registry LoopBackRegistry
         {
@@ -445,7 +156,7 @@ Configuration SharePointDevelopmentEnvironment
         {
             GroupName           = "Administrators"
             Credential          = $DomainAdminCredential
-            MembersToInclude    = "$shortDomainName\$SPAdminGroupName"
+            MembersToInclude    = "$shortDomainName\$($configParameters.SPAdminGroupName)"
             DependsOn           = "[xDSCDomainJoin]DomainJoin"
         }
         xIEEsc DisableIEEsc
@@ -461,7 +172,7 @@ Configuration SharePointDevelopmentEnvironment
         }
         xHostsFile SiteHostEntry
         {
-            HostName  = "$NodeName.northeurope.cloudapp.azure.com"
+            HostName  = $siteCollectionHostName
             IPAddress = "127.0.0.1"
             Ensure    = "Present"
         }
@@ -494,7 +205,7 @@ Configuration SharePointDevelopmentEnvironment
         { 
             Ensure      = "Present"
             BinaryDir   = "C:\Install\SharePoint 2016"
-            ProductKey  = $SPProductKey
+            ProductKey  = $configParameters.SPProductKey
             DependsOn   = "[SPInstallPrereqs]SP2016Prereqs"
         }
         SPFarm Farm
@@ -506,11 +217,20 @@ Configuration SharePointDevelopmentEnvironment
             Passphrase                = $SPPassphraseCredential
             FarmAccount               = $SPFarmAccountCredential
             RunCentralAdmin           = $true
-            InstallAccount            = $SPInstallAccountCredential
             CentralAdministrationPort = 7777
             ServerRole                = "SingleServerFarm"
+            InstallAccount            = $SPInstallAccountCredential
             DependsOn                 = @("[xFireWall]SQLFirewallRule","[SPInstall]InstallSharePoint","[xSQLServerSetup]SQLSetup","[Group]AdminGroup")
         }
+
+        SPDiagnosticLoggingSettings ApplyDiagnosticLogSettings
+        {
+            LogPath         = "C:\Logs\ULS"
+            LogSpaceInGB    = 10
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPFarm]Farm"
+        }
+        
         SPManagedAccount ApplicationWebPoolAccount
         {
             AccountName     = $SPWebAppPoolAccountCredential.UserName
@@ -518,6 +238,7 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPFarm]Farm"
         }
+
         SPWebApplication RootWebApp
         {
             Name                    = "RootWebApp"
@@ -529,14 +250,21 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount          = $SPInstallAccountCredential
             DependsOn               = "[SPManagedAccount]ApplicationWebPoolAccount"
         }
+
+        xIISLogging RootWebAppIISLogging
+        {
+            LogPath = "C:\Logs\IIS"
+        }
+
         SPCacheAccounts CacheAccounts
         {
             WebAppUrl            = "http://SP2016_01.bizspark-sap2.local"
-            SuperUserAlias       = "$shortDomainName\$SPOCSuperUser"
-            SuperReaderAlias     = "$shortDomainName\$SPOCSuperReader"
+            SuperUserAlias       = "$shortDomainName\$($configParameters.SPOCSuperUser)"
+            SuperReaderAlias     = "$shortDomainName\$($configParameters.SPOCSuperReader)"
             InstallAccount       = $SPInstallAccountCredential
             DependsOn            = "[SPWebApplication]RootWebApp"
         }
+
         SPWebAppPolicy RootWebAppPolicy
         {
             WebAppUrl               = "RootWebApp"
@@ -551,24 +279,25 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount         = $SPInstallAccountCredential
             DependsOn              = "[SPCacheAccounts]CacheAccounts"
         }
+
         SPSite RootPathSite
         {
             Url             = "http://SP2016_01.bizspark-sap2.local"
             OwnerAlias      = $SPInstallAccountCredential.UserName
-            Template        = "STS#0"
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPWebApplication]RootWebApp"
         }
+
         SPSite RootHostSite
         {
-            Url                         = "http://$NodeName.northeurope.cloudapp.azure.com"
+            Url                         = "http://$siteCollectionHostName"
             OwnerAlias                  = $SPInstallAccountCredential.UserName
             Template                    = "STS#0"
             HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
             InstallAccount              = $SPInstallAccountCredential
             DependsOn                   = "[SPSite]RootPathSite"
         }
-
+        
         SPManagedAccount SharePointServicesPoolAccount
         {
             AccountName     = $SPServicesAccountCredential.UserName
@@ -585,6 +314,32 @@ Configuration SharePointDevelopmentEnvironment
             DependsOn       = "[SPManagedAccount]SearchServicePoolAccount"
         }
 
+        SPAccessServiceApp AccessServices
+        {
+            Name            = "Access Services"
+            ApplicationPool = "SharePoint Services App Pool";
+            DatabaseServer  = $NodeName
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+
+        SPBCSServiceApp BCSServiceApp
+        {
+            Name            = "Business Data Connectivity Service"
+            ApplicationPool = "SharePoint Services App Pool";
+            DatabaseName    = "SP_BCS"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+
+        SPExcelServiceApp ExcelServices
+        {
+            Name                    = "Excel Services Service Application"
+            ApplicationPool         = "SharePoint Services App Pool";
+            InstallAccount          = $SPInstallAccountCredential;
+            DependsOn               = "[SPServiceAppPool]SharePointServicesAppPool";
+        }
+
         SPManagedMetaDataServiceApp ManagedMetadataServiceApp
         {
             DatabaseName    = "SP_Metadata";
@@ -595,47 +350,14 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
         }
-        
-        SPSite MySite
-        {
-            Url                         = "http://$NodeName.northeurope.cloudapp.azure.com/sites/my"
-            OwnerAlias                  = $SPInstallAccountCredential.UserName
-            Template                    = "SPSMSITEHOST#0"
-            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
-            InstallAccount              = $SPInstallAccountCredential
-            DependsOn                   = "[SPSite]RootPathSite"
-        }
 
-        SPUserProfileServiceApp UserProfileServiceApp
+        SPPerformancePointServiceApp PerformancePoint
         {
-            Name                = "User Profile Service Application"
-            ApplicationPool     = "SharePoint Services App Pool"
-            MySiteHostLocation  = "http://$NodeName.northeurope.cloudapp.azure.com/sites/my"
-            ProfileDBName       = "SP_UserProfiles"
-            SocialDBName        = "SP_Social"
-            SyncDBName          = "SP_ProfileSync"
-            EnableNetBIOS       = $false
-            FarmAccount         = $SPFarmAccountCredential
-            InstallAccount      = $SPInstallAccountCredential
-            DependsOn           = @("[SPServiceAppPool]SharePointServicesAppPool","[SPSite]MySite")
-        }
-
-        SPSubscriptionSettingsServiceApp SubscriptionSettingsServiceApp
-        {
-            Name            = "Subscription Settings Service Application"
-            ApplicationPool = "SharePoint Services App Pool"
-            DatabaseName    = "SP_SubscriptionSettings"
+            Name            = "PerformancePoint Service Application"
+            ApplicationPool = "SharePoint Services App Pool";
+            DatabaseName    = "SP_PerformancePoint"
             InstallAccount  = $SPInstallAccountCredential
-            DependsOn       = "[SPFarm]Farm"
-        }
-
-        SPAppManagementServiceApp AppManagementServiceApp
-        {
-            Name            = "App Management Service Application"
-            ApplicationPool = "SharePoint Services App Pool"
-            DatabaseName    = "SP_AppManagement"
-            InstallAccount  = $SPInstallAccountCredential
-            DependsOn       = "[SPSubscriptionSettingsServiceApp]SubscriptionSettingsServiceApp"
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
         }
 
         SPManagedAccount SearchServicePoolAccount
@@ -656,7 +378,7 @@ Configuration SharePointDevelopmentEnvironment
 
         SPSite SearchCenterSite
         {
-            Url                         = "http://$NodeName.northeurope.cloudapp.azure.com/sites/searchcenter"
+            Url                         = "http://$siteCollectionHostName/sites/searchcenter"
             OwnerAlias                  = $SPInstallAccountCredential.UserName
             Template                    = "SRCHCEN#0"
             HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
@@ -668,9 +390,8 @@ Configuration SharePointDevelopmentEnvironment
         {
             Name                        = "Search Service Application";
             Ensure                      = "Present";
-            ProxyName                   = "Search Service Application";
             ApplicationPool             = "SharePoint Search App Pool";
-            SearchCenterUrl             = "http://$NodeName.northeurope.cloudapp.azure.com/sites/searchcenter/pages";
+            SearchCenterUrl             = "http://$siteCollectionHostName/sites/searchcenter/pages";
             DatabaseName                = "SP_Search";
             DefaultContentAccessAccount = $SPCrawlerAccountCredential;
             InstallAccount              = $SPInstallAccountCredential
@@ -716,12 +437,101 @@ Configuration SharePointDevelopmentEnvironment
             InstallAccount       = $SPInstallAccountCredential
             DependsOn            = "[SPSearchTopology]SearchTopology"
         }
+
+        SPSecureStoreServiceApp SecureStoreServiceApp
+        {
+            Name            = "Secure Store Service"
+            ApplicationPool = "SharePoint Services App Pool"
+            AuditingEnabled = $true
+            DatabaseName    = "SP_SecureStoreService"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+
+        SPStateServiceApp StateServiceApp
+        {
+            Name            = "State Service"
+            DatabaseName    = "SP_StateService"
+            Ensure          = "Present"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+
+        SPSubscriptionSettingsServiceApp SubscriptionSettingsServiceApp
+        {
+            Name            = "Subscription Settings Service Application"
+            ApplicationPool = "SharePoint Services App Pool"
+            DatabaseName    = "SP_SubscriptionSettings"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+
+        SPAppManagementServiceApp AppManagementServiceApp
+        {
+            Name            = "App Management Service Application"
+            ApplicationPool = "SharePoint Services App Pool"
+            DatabaseName    = "SP_AppManagement"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPSubscriptionSettingsServiceApp]SubscriptionSettingsServiceApp"
+        }
+
+        SPUsageApplication UsageApplication 
+        {
+            Name                    = "Usage Service Application"
+            DatabaseName            = "SP_Usage"
+            UsageLogCutTime         = 5
+            UsageLogLocation        = "C:\Logs\Usage"
+            UsageLogMaxFileSizeKB   = 1024
+            InstallAccount          = $SPInstallAccountCredential
+            DependsOn               = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+
+        SPSite MySite
+        {
+            Url                         = "http://$siteCollectionHostName/sites/my"
+            OwnerAlias                  = $SPInstallAccountCredential.UserName
+            Template                    = "SPSMSITEHOST#0"
+            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = "[SPSite]RootPathSite"
+        }
+
+        SPUserProfileServiceApp UserProfileServiceApp
+        {
+            Name                = "User Profile Service Application"
+            ApplicationPool     = "SharePoint Services App Pool"
+            MySiteHostLocation  = "http://$siteCollectionHostName/sites/my"
+            ProfileDBName       = "SP_UserProfiles"
+            SocialDBName        = "SP_Social"
+            SyncDBName          = "SP_ProfileSync"
+            EnableNetBIOS       = $false
+            FarmAccount         = $SPFarmAccountCredential
+            InstallAccount      = $SPInstallAccountCredential
+            DependsOn           = @("[SPServiceAppPool]SharePointServicesAppPool","[SPSite]MySite")
+        }
+
+        SPVisioServiceApp VisioServices
+        {
+            Name            = "Visio Graphics Service"
+            ApplicationPool = "SharePoint Services App Pool"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        }
+
+        SPWordAutomationServiceApp WordAutomation 
+        { 
+            Name            = "Word Automation Service" 
+            Ensure          = "Present"
+            ApplicationPool = "SharePoint Services App Pool"
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
+        } 
     }
 }
-
+$configParameters = Import-PowershellDataFile configparemeters.psd1;
+$SP2016EntDevMachineName = $configParameters.SP2016EntDevMachineName
 $configurationData = @{ AllNodes = @(
-    @{ NodeName = $DCMachineNameParameter; PSDscAllowPlainTextPassword = $True },
-    @{ NodeName = $SP2016DevMachineNameParameter; PSDscAllowPlainTextPassword = $True }
+    @{ NodeName = $SP2016EntDevMachineName; PSDscAllowPlainTextPassword = $True }
 ) }
-SharePointDevelopmentEnvironment -ConfigurationData $configurationData
+SP2016EntDevEnv -ConfigurationData $configurationData -ConfigParameters $configParameters
 
