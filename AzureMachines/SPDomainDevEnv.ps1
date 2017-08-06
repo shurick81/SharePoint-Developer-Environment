@@ -139,6 +139,10 @@ Configuration SPDomainDevEnv
 
     Node $DCMachineName
     {
+        LocalConfigurationManager
+        {
+            RebootNodeIfNeeded = $true;
+        }
         xRemoteDesktopAdmin DCRDPSettings
         {
            Ensure               = 'Present'

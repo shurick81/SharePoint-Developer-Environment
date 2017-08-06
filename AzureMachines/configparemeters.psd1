@@ -1,10 +1,10 @@
 @{
     DomainName = "lab4.local"
     DCMachineName = "lab4dc2"
-    SP2016EntDevMachineName = "lab4sp4"
+    SP2016EntDevMachineName = "lab4sp5"
     DomainControllerIP = "10.1.0.6"
     SearchIndexDirectory = "c:\SPSearchIndex"
-    SPProductKey = "TY6N4-K9WD3-JD2J2-VYKTJ-GVJ2J"
+    SPProductKey = "NQGJR-63HC8-XCRQH-MYVCH-3J3QR"
     DomainAdminUserName = "dauser1"
     DomainAdminPassword = "123$%^qweRTY"
     DomainSafeModeAdministratorPassword = "123$%^qweRTY"
@@ -30,4 +30,5 @@
     SPMemberGroupName = "SP Members"
     SPVisitorGroupName = "SP Visitors"
     SPPassphrase = "123$%^qweRTY"
+    SQLPass = "P@ssw0rd"
 }

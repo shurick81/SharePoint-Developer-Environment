@@ -12,6 +12,7 @@ Configuration SP2016EntDevEnv
     $SPSearchServiceAccountUserName = $configParameters.SPSearchServiceAccountUserName;
     $SPCrawlerAccountUserName = $configParameters.SPCrawlerAccountUserName;
     $SPPassPhrase = $configParameters.SPPassPhrase;
+    $SQLPass = $configParameters.SQLPass;
     $searchIndexDirectory = $configParameters.searchIndexDirectory;
 
     $shortDomainName = $DomainName.Substring( 0, $DomainName.IndexOf( "." ) )
@@ -44,10 +45,21 @@ Configuration SP2016EntDevEnv
         {
             if ( $SPPassPhrase )
             {
-                $securedPassword = ConvertTo-SecureString $configParameters.SPPassPhrase -AsPlainText -Force
+                $securedPassword = ConvertTo-SecureString $SPPassPhrase -AsPlainText -Force
                 $SPPassphraseCredential = New-Object System.Management.Automation.PSCredential( "anyidentity", $securedPassword )
             } else {
                 $SPPassphraseCredential = Get-Credential -Message "Enter any user name and enter pass phrase in password field";
+            }
+        }
+
+        if ( !$SQLPassCredential )
+        {
+            if ( $SQLPass )
+            {
+                $securedPassword = ConvertTo-SecureString $SQLPass -AsPlainText -Force
+                $SQLPassCredential = New-Object System.Management.Automation.PSCredential( "anyidentity", $securedPassword )
+            } else {
+                $SQLPassCredential = Get-Credential -Message "Enter any user name and enter SQL SA password";
             }
         }
 
@@ -113,25 +125,24 @@ Configuration SP2016EntDevEnv
     Import-DSCResource -ModuleName xDSCDomainJoin
     Import-DSCResource -ModuleName xNetworking
     Import-DSCResource -ModuleName xSQLServer -Name xSQLServerSetup
+    Import-DscResource -ModuleName xCredSSP
     Import-DSCResource -ModuleName SharePointDSC
     Import-DscResource -ModuleName xWebAdministration
 
     Node $SP2016EntDevMachineName
     {
+        LocalConfigurationManager
+        {
+            RebootNodeIfNeeded = $true;
+        }
+        
         xDNSServerAddress DNSClient
         {
             Address         = $configParameters.DomainControllerIP
             AddressFamily   = "IPv4"
             InterfaceAlias  = "Ethernet 3"
         }
-        Registry LoopBackRegistry
-        {
-            Ensure      = "Present"  # You can also set Ensure to "Absent"
-            Key         = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa"
-            ValueName   = "DisableLoopbackCheck"
-            ValueType   = "DWORD"
-            ValueData   = "1"
-        }
+               
         xFireWall SQLFirewallRule
         {
             Name        = "AllowSQLConnection"
@@ -145,12 +156,14 @@ Configuration SP2016EntDevEnv
             Protocol    = "TCP"
             Description = "Firewall rule to allow SQL communication"
         }
+        
         xDSCDomainJoin DomainJoin
         {
             Domain      = $DomainName
             Credential  = $DomainAdminCredential
             DependsOn   = @("[xDNSServerAddress]DNSClient","[Registry]LoopBackRegistry")
         }
+        
         #Local group
         Group AdminGroup
         {
@@ -159,32 +172,48 @@ Configuration SP2016EntDevEnv
             MembersToInclude    = "$shortDomainName\$($configParameters.SPAdminGroupName)"
             DependsOn           = "[xDSCDomainJoin]DomainJoin"
         }
+        
+        Registry LoopBackRegistry
+        {
+            Ensure      = "Present"  # You can also set Ensure to "Absent"
+            Key         = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa"
+            ValueName   = "DisableLoopbackCheck"
+            ValueType   = "DWORD"
+            ValueData   = "1"
+        }
+
         xIEEsc DisableIEEsc
         {
             IsEnabled   = $false
             UserRole    = "Administrators"
         }
+        
         xHostsFile WAHostEntry
         {
             HostName  = "SP2016_01.bizspark-sap2.local"
             IPAddress = "127.0.0.1"
             Ensure    = "Present"
         }
+        
         xHostsFile SiteHostEntry
         {
             HostName  = $siteCollectionHostName
             IPAddress = "127.0.0.1"
             Ensure    = "Present"
         }
+        
         xSQLServerSetup SQLSetup
         {
             InstanceName        = "MSSQLServer"
             SourcePath          = "C:\Install\SQL 2016"
-            Features            = "SQLENGINE"
+            Features            = "SQLENGINE,FULLTEXT"
             InstallSharedDir    = "C:\Program Files\Microsoft SQL Server"
+            SecurityMode        = 'SQL'
+            SAPwd               = $SQLPassCredential
             SQLSysAdminAccounts = $SPInstallAccountCredential.UserName
             DependsOn           = "[Group]AdminGroup"
         }
+        
         Package SSMS
         {
             Ensure      = "Present"
@@ -195,12 +224,13 @@ Configuration SP2016EntDevEnv
             Credential  = $SPInstallAccountCredential
             DependsOn   = "[Group]AdminGroup"
         }
+        
         SPInstallPrereqs SP2016Prereqs
         {
             InstallerPath   = "C:\Install\SharePoint 2016\Prerequisiteinstaller.exe"
             OnlineMode      = $true
-            DependsOn       = "[Registry]LoopBackRegistry"
         }
+        
         SPInstall InstallSharePoint 
         { 
             Ensure      = "Present"
@@ -208,6 +238,20 @@ Configuration SP2016EntDevEnv
             ProductKey  = $configParameters.SPProductKey
             DependsOn   = "[SPInstallPrereqs]SP2016Prereqs"
         }
+
+        xCredSSP CredSSPServer
+        {
+            Ensure  = "Present"
+            Role    = "Server"
+        }
+
+        xCredSSP CredSSPClient
+        {
+            Ensure = "Present";
+            Role = "Client";
+            DelegateComputers = "*.lab4.local"
+        }
+        
         SPFarm Farm
         {
             Ensure                    = "Present"
@@ -220,7 +264,7 @@ Configuration SP2016EntDevEnv
             CentralAdministrationPort = 7777
             ServerRole                = "SingleServerFarm"
             InstallAccount            = $SPInstallAccountCredential
-            DependsOn                 = @("[xFireWall]SQLFirewallRule","[SPInstall]InstallSharePoint","[xSQLServerSetup]SQLSetup","[Group]AdminGroup")
+            DependsOn                 = @("[xFireWall]SQLFirewallRule","[SPInstall]InstallSharePoint","[xSQLServerSetup]SQLSetup","[Group]AdminGroup","[xCredSSP]CredSSPServer","[xCredSSP]CredSSPClient")
         }
 
         SPDiagnosticLoggingSettings ApplyDiagnosticLogSettings
@@ -298,6 +342,16 @@ Configuration SP2016EntDevEnv
             DependsOn                   = "[SPSite]RootPathSite"
         }
         
+        Registry LocalZone
+        {
+            Ensure                  = "Present"  # You can also set Ensure to "Absent"
+            Key                     = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\$DomainName\sp2016entdev"
+            ValueName               = "HTTP"
+            ValueType               = "DWORD"
+            ValueData               = "1"
+            PsDscRunAsCredential    = $SPInstallAccountCredential
+        }
+
         SPManagedAccount SharePointServicesPoolAccount
         {
             AccountName     = $SPServicesAccountCredential.UserName
@@ -327,17 +381,10 @@ Configuration SP2016EntDevEnv
         {
             Name            = "Business Data Connectivity Service"
             ApplicationPool = "SharePoint Services App Pool";
+            DatabaseServer  = $NodeName
             DatabaseName    = "SP_BCS"
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
-        }
-
-        SPExcelServiceApp ExcelServices
-        {
-            Name                    = "Excel Services Service Application"
-            ApplicationPool         = "SharePoint Services App Pool";
-            InstallAccount          = $SPInstallAccountCredential;
-            DependsOn               = "[SPServiceAppPool]SharePointServicesAppPool";
         }
 
         SPManagedMetaDataServiceApp ManagedMetadataServiceApp
@@ -358,84 +405,6 @@ Configuration SP2016EntDevEnv
             DatabaseName    = "SP_PerformancePoint"
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
-        }
-
-        SPManagedAccount SearchServicePoolAccount
-        {
-            AccountName     = $SPSearchServiceAccountCredential.UserName
-            Account         = $SPSearchServiceAccountCredential
-            InstallAccount  = $SPInstallAccountCredential
-            DependsOn       = "[SPFarm]Farm"
-        }
-
-        SPServiceAppPool SearchServiceAppPool
-        {
-            Name            = "SharePoint Search App Pool"
-            ServiceAccount  = $SPSearchServiceAccountCredential.UserName
-            InstallAccount  = $SPInstallAccountCredential
-            DependsOn       = "[SPManagedAccount]SearchServicePoolAccount"
-        }
-
-        SPSite SearchCenterSite
-        {
-            Url                         = "http://$siteCollectionHostName/sites/searchcenter"
-            OwnerAlias                  = $SPInstallAccountCredential.UserName
-            Template                    = "SRCHCEN#0"
-            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
-            InstallAccount              = $SPInstallAccountCredential
-            DependsOn                   = "[SPSite]RootPathSite"
-        }
-
-        SPSearchServiceApp EnterpriseSearchServiceApplication
-        {
-            Name                        = "Search Service Application";
-            Ensure                      = "Present";
-            ApplicationPool             = "SharePoint Search App Pool";
-            SearchCenterUrl             = "http://$siteCollectionHostName/sites/searchcenter/pages";
-            DatabaseName                = "SP_Search";
-            DefaultContentAccessAccount = $SPCrawlerAccountCredential;
-            InstallAccount              = $SPInstallAccountCredential
-            DependsOn                   = @("[SPServiceAppPool]SearchServiceAppPool","[SPSite]SearchCenterSite")
-        }
-
-        File "IndexFolder"
-        {
-            DestinationPath = $searchIndexDirectory
-            Type            = "Directory"
-        }
-
-        SPSearchTopology SearchTopology
-        {
-            ServiceAppName          = "Search Service Application";
-            ContentProcessing       = @($NodeName);
-            AnalyticsProcessing     = @($NodeName);
-            IndexPartition          = @($NodeName);
-            Crawler                 = @($NodeName);
-            Admin                   = @($NodeName);
-            QueryProcessing         = @($NodeName);
-            FirstPartitionDirectory = $searchIndexDirectory;
-            InstallAccount          = $SPInstallAccountCredential
-            DependsOn = @("[SPSearchServiceApp]EnterpriseSearchServiceApplication","[File]IndexFolder");
-        }
-
-        SPSearchContentSource WebsiteSource
-        {
-            ServiceAppName       = "Search Service Application"
-            Name                 = "Local SharePoint sites"
-            ContentSourceType    = "SharePoint"
-            Addresses            = @("http://SP2016_01.bizspark-sap2.local")
-            CrawlSetting         = "CrawlEverything"
-            ContinuousCrawl      = $true
-            FullSchedule         = MSFT_SPSearchCrawlSchedule{
-                                    ScheduleType = "Weekly"
-                                    CrawlScheduleDaysOfWeek = @("Monday", "Wednesday", "Friday")
-                                    StartHour = "3"
-                                    StartMinute = "0"
-                                   }
-            Priority             = "Normal"
-            Ensure               = "Present"
-            InstallAccount       = $SPInstallAccountCredential
-            DependsOn            = "[SPSearchTopology]SearchTopology"
         }
 
         SPSecureStoreServiceApp SecureStoreServiceApp
@@ -486,6 +455,84 @@ Configuration SP2016EntDevEnv
             DependsOn               = "[SPServiceAppPool]SharePointServicesAppPool"
         }
 
+        SPManagedAccount SearchServicePoolAccount
+        {
+            AccountName     = $SPSearchServiceAccountCredential.UserName
+            Account         = $SPSearchServiceAccountCredential
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPFarm]Farm"
+        }
+
+        SPServiceAppPool SearchServiceAppPool
+        {
+            Name            = "SharePoint Search App Pool"
+            ServiceAccount  = $SPSearchServiceAccountCredential.UserName
+            InstallAccount  = $SPInstallAccountCredential
+            DependsOn       = "[SPManagedAccount]SearchServicePoolAccount"
+        }
+
+        SPSite SearchCenterSite
+        {
+            Url                         = "http://$siteCollectionHostName/sites/searchcenter"
+            OwnerAlias                  = $SPInstallAccountCredential.UserName
+            Template                    = "SRCHCEN#0"
+            HostHeaderWebApplication    = "http://SP2016_01.bizspark-sap2.local"
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = "[SPSite]RootPathSite"
+        }
+
+        SPSearchServiceApp EnterpriseSearchServiceApplication
+        {
+            Name                        = "Search Service Application";
+            Ensure                      = "Present";
+            ApplicationPool             = "SharePoint Search App Pool";
+            SearchCenterUrl             = "http://$siteCollectionHostName/sites/searchcenter/pages";
+            DatabaseName                = "SP_Search";
+            DefaultContentAccessAccount = $SPCrawlerAccountCredential;
+            InstallAccount              = $SPInstallAccountCredential
+            DependsOn                   = @("[SPUsageApplication]UsageApplication","[SPServiceAppPool]SearchServiceAppPool","[SPSite]SearchCenterSite")
+        }
+
+        File "IndexFolder"
+        {
+            DestinationPath = $searchIndexDirectory
+            Type            = "Directory"
+        }
+
+        SPSearchTopology SearchTopology
+        {
+            ServiceAppName          = "Search Service Application";
+            ContentProcessing       = @($NodeName);
+            AnalyticsProcessing     = @($NodeName);
+            IndexPartition          = @($NodeName);
+            Crawler                 = @($NodeName);
+            Admin                   = @($NodeName);
+            QueryProcessing         = @($NodeName);
+            FirstPartitionDirectory = $searchIndexDirectory;
+            InstallAccount          = $SPInstallAccountCredential
+            DependsOn = @("[SPSearchServiceApp]EnterpriseSearchServiceApplication","[File]IndexFolder");
+        }
+
+        SPSearchContentSource WebsiteSource
+        {
+            ServiceAppName       = "Search Service Application"
+            Name                 = "Local SharePoint sites"
+            ContentSourceType    = "SharePoint"
+            Addresses            = @("http://SP2016_01.bizspark-sap2.local")
+            CrawlSetting         = "CrawlEverything"
+            ContinuousCrawl      = $true
+            FullSchedule         = MSFT_SPSearchCrawlSchedule{
+                                    ScheduleType = "Weekly"
+                                    CrawlScheduleDaysOfWeek = @("Monday", "Wednesday", "Friday")
+                                    StartHour = "3"
+                                    StartMinute = "0"
+                                   }
+            Priority             = "Normal"
+            Ensure               = "Present"
+            InstallAccount       = $SPInstallAccountCredential
+            DependsOn            = "[SPSearchTopology]SearchTopology"
+        }
+        
         SPSite MySite
         {
             Url                         = "http://$siteCollectionHostName/sites/my"
@@ -523,6 +570,7 @@ Configuration SP2016EntDevEnv
             Name            = "Word Automation Service" 
             Ensure          = "Present"
             ApplicationPool = "SharePoint Services App Pool"
+            DatabaseName    = "SP_WordAutomation"
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPServiceAppPool]SharePointServicesAppPool"
         } 
