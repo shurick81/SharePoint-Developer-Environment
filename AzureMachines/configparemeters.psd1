@@ -1,8 +1,8 @@
 @{
-    DomainName = "lab4.local"
-    DCMachineName = "lab4dc2"
-    SP2016EntDevMachineName = "lab4sp5"
-    DomainControllerIP = "10.1.0.6"
+    DomainName = "lab5.local"
+    DCMachineName = "lab5dc1"
+    SP2016EntDevMachineName = "lab5sp1"
+    DomainControllerIP = "10.1.0.7"
     SearchIndexDirectory = "c:\SPSearchIndex"
     SPProductKey = "NQGJR-63HC8-XCRQH-MYVCH-3J3QR"
     DomainAdminUserName = "dauser1"

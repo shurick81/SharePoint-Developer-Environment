@@ -249,7 +249,7 @@ Configuration SP2016EntDevEnv
         {
             Ensure = "Present";
             Role = "Client";
-            DelegateComputers = "*.lab4.local"
+            DelegateComputers = "*.$DomainName"
         }
         
         SPFarm Farm
@@ -269,7 +269,7 @@ Configuration SP2016EntDevEnv
 
         SPDiagnosticLoggingSettings ApplyDiagnosticLogSettings
         {
-            LogPath         = "C:\Logs\ULS"
+            LogPath         = "C:\SPLogs\ULS"
             LogSpaceInGB    = 10
             InstallAccount  = $SPInstallAccountCredential
             DependsOn       = "[SPFarm]Farm"
@@ -297,7 +297,7 @@ Configuration SP2016EntDevEnv
 
         xIISLogging RootWebAppIISLogging
         {
-            LogPath = "C:\Logs\IIS"
+            LogPath = "C:\SPLogs\IIS"
         }
 
         SPCacheAccounts CacheAccounts
@@ -342,9 +342,10 @@ Configuration SP2016EntDevEnv
             DependsOn                   = "[SPSite]RootPathSite"
         }
         
+        #this needs to be troubleshooted
         Registry LocalZone
         {
-            Ensure                  = "Present"  # You can also set Ensure to "Absent"
+            Ensure                  = "Present"
             Key                     = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\$DomainName\sp2016entdev"
             ValueName               = "HTTP"
             ValueType               = "DWORD"
@@ -449,7 +450,7 @@ Configuration SP2016EntDevEnv
             Name                    = "Usage Service Application"
             DatabaseName            = "SP_Usage"
             UsageLogCutTime         = 5
-            UsageLogLocation        = "C:\Logs\Usage"
+            UsageLogLocation        = "C:\SPLogs\Usage"
             UsageLogMaxFileSizeKB   = 1024
             InstallAccount          = $SPInstallAccountCredential
             DependsOn               = "[SPServiceAppPool]SharePointServicesAppPool"

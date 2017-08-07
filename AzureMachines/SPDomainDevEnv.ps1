@@ -271,7 +271,7 @@ Configuration SPDomainDevEnv
 
         xADGroup SPVisitorGroup
         {
-            GroupName           = $SPVisitorGroupName
+            GroupName           = $configParameters.SPVisitorGroupName
             Ensure              = "Present"
             MembersToInclude    = $SPSecondTestAccountCredential.GetNetworkCredential().UserName
             DependsOn           = "[xADUser]SPInstallAccountUser"
